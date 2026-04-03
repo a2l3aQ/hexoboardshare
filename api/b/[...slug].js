@@ -1,9 +1,5 @@
-import { ImageResponse } from '@vercel/og';
-
 const APP_URL  = 'https://hex-tic-tac-toe.github.io/strategies/';
 const SITE_URL = 'https://hexoboardshare.vercel.app';
-
-// ── URLCodec (ported from client) ──────────────────────────────────────────
 
 function spiralOrder(s) {
   const max  = s - 1;
@@ -26,14 +22,7 @@ function decode(str) {
       'base64'
     );
     let pos = 0;
-    const r = b => {
-      let v = 0;
-      for (let i = b - 1; i >= 0; i--) {
-        if ((bytes[pos >> 3] >> (7 - (pos & 7))) & 1) v |= 1 << i;
-        pos++;
-      }
-      return v;
-    };
+    const r = b => { let v = 0; for (let i = b-1; i >= 0; i--) { if ((bytes[pos>>3]>>(7-(pos&7)))&1) v|=1<<i; pos++; } return v; };
     const s = r(5) + 1;
     if (s < 2 || s > 32) return null;
     const order     = spiralOrder(s);
@@ -47,8 +36,6 @@ function decode(str) {
   } catch { return null; }
 }
 
-// ── Hex geometry ────────────────────────────────────────────────────────────
-
 function hexPath(cx, cy, R) {
   return Array.from({ length: 6 }, (_, i) => {
     const a = Math.PI / 6 + (Math.PI / 3) * i;
@@ -59,12 +46,17 @@ function hexPath(cx, cy, R) {
 
 function buildSVG(grid, dark) {
   const { s, cells } = grid;
-  const R   = 22;
-  const col = { empty: dark ? '#1c1c1c' : '#d4d0c8', stroke: dark ? '#2e2e2e' : '#b8b4ac',
-                x: dark ? '#c8c8c8' : '#1e1c1a',   oStroke: dark ? '#888' : '#666660',
-                oBg: dark ? '#202020' : '#e0dcd4',  oStripe: dark ? '#909090' : '#706860' };
-
-  const max   = s - 1;
+  const R   = 28;
+  const col = {
+    empty:   dark ? '#1c1c1c' : '#d4d0c8',
+    stroke:  dark ? '#2e2e2e' : '#b8b4ac',
+    x:       dark ? '#c8c8c8' : '#1e1c1a',
+    oStroke: dark ? '#888'    : '#666660',
+    oBg:     dark ? '#202020' : '#e0dcd4',
+    oStripe: dark ? '#909090' : '#706860',
+    bg:      dark ? '#0a0a0a' : '#f4f1ec',
+  };
+  const max = s - 1;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   const coords = [];
   for (let q = -max; q <= max; q++) {
@@ -78,105 +70,84 @@ function buildSVG(grid, dark) {
       coords.push({ q, r: rr, x, y });
     }
   }
-
-  const pad = R * 0.3, vw = maxX - minX + pad * 2, vh = maxY - minY + pad * 2;
-  const ox  = -minX + pad, oy = -minY + pad;
+  const pad = R * 0.4, vw = maxX - minX + pad * 2, vh = maxY - minY + pad * 2;
+  const ox = -minX + pad, oy = -minY + pad;
   const hid = 'ho';
-
+  const sz = Math.max(3, R * 0.22), lw = Math.max(1, sz * 0.5);
+  const defs = `<defs><pattern id="${hid}" patternUnits="userSpaceOnUse" width="${sz.toFixed(1)}" height="${sz.toFixed(1)}" patternTransform="rotate(45)"><rect width="${sz.toFixed(1)}" height="${sz.toFixed(1)}" fill="${col.oBg}"/><line x1="0" y1="0" x2="0" y2="${sz.toFixed(1)}" stroke="${col.oStripe}" stroke-width="${lw.toFixed(1)}"/></pattern></defs>`;
   let paths = '';
   for (const { q, r, x, y } of coords) {
     const state = cells.get(`${q},${r}`) || 0;
     const cx = x + ox, cy = y + oy;
     const d  = hexPath(cx, cy, R);
-    if (!state) {
-      paths += `<path d="${d}" fill="${col.empty}" stroke="${col.stroke}" stroke-width="0.9"/>`;
-    } else if (state === 1) {
-      paths += `<path d="${d}" fill="${col.x}" stroke="none"/>`;
-    } else {
-      paths += `<path d="${d}" fill="url(#${hid})" stroke="${col.oStroke}" stroke-width="1"/>`;
-    }
+    if      (!state)   paths += `<path d="${d}" fill="${col.empty}" stroke="${col.stroke}" stroke-width="0.9"/>`;
+    else if (state===1) paths += `<path d="${d}" fill="${col.x}"/>`;
+    else               paths += `<path d="${d}" fill="url(#${hid})" stroke="${col.oStroke}" stroke-width="1"/>`;
   }
-
-  const sz = Math.max(3, R * 0.22), lw = Math.max(1, sz * 0.5);
-  const defs = `<defs><pattern id="${hid}" patternUnits="userSpaceOnUse" width="${sz}" height="${sz}" patternTransform="rotate(45)">
-    <rect width="${sz}" height="${sz}" fill="${col.oBg}"/>
-    <line x1="0" y1="0" x2="0" y2="${sz}" stroke="${col.oStripe}" stroke-width="${lw}"/>
-  </pattern></defs>`;
-
-  const bg = dark ? '#0a0a0a' : '#f4f1ec';
-  const W  = Math.round(vw), H = Math.round(vh);
-  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="background:${bg}">
-    ${defs}${paths}
-  </svg>`, W, H };
+  const W = Math.round(vw), H = Math.round(vh);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${col.bg}"/>${defs}${paths}</svg>`;
 }
-
-// ── ASCII art ───────────────────────────────────────────────────────────────
 
 function buildASCII(grid) {
   const { s, cells } = grid;
   const max = s - 1;
-  const rows = [];
-  for (let r = -max; r <= max; r++) {
+  return Array.from({ length: 2 * max + 1 }, (_, ri) => {
+    const r = ri - max;
     const indent = ' '.repeat(Math.abs(r));
     const row = [];
     for (let q = -max; q <= max; q++) {
       if (Math.abs(q + r) > max) continue;
-      const state = cells.get(`${q},${r}`) || 0;
-      row.push(state === 1 ? 'X' : state === 2 ? 'O' : '·');
+      const st = cells.get(`${q},${r}`) || 0;
+      row.push(st === 1 ? 'X' : st === 2 ? 'O' : '·');
     }
-    rows.push(indent + row.join(' '));
-  }
-  return rows.join('\n');
+    return indent + row.join(' ');
+  }).join('\n');
 }
 
-// ── Handler ─────────────────────────────────────────────────────────────────
+function countStones(grid) {
+  let x = 0, o = 0;
+  for (const v of grid.cells.values()) { if (v === 1) x++; else if (v === 2) o++; }
+  return { x, o };
+}
 
-export const config = { runtime: 'edge' };
-
-export default async function handler(req) {
-  const url    = new URL(req.url);
-  const parts  = url.pathname.replace(/^\/b\//, '').split('/');
+export default function handler(req, res) {
+  const parts  = req.url.replace(/^\/b\//, '').split('/');
   const code   = parts[0];
   const isImg  = parts[1] === 'image';
 
-  if (!code) return Response.redirect(APP_URL, 302);
-
+  if (!code) return res.redirect(302, APP_URL);
   const grid = decode(code);
-  if (!grid)  return Response.redirect(APP_URL, 302);
+  if (!grid)  return res.redirect(302, APP_URL);
 
-  const hint  = req.headers.get('Sec-CH-Prefers-Color-Scheme');
-  const dark  = hint !== 'light';
-  const appHref = `${APP_URL}#${code}`;
-  const imgHref = `${SITE_URL}/b/${code}/image`;
+  const ua   = req.headers['user-agent'] || '';
+  const hint = req.headers['sec-ch-prefers-color-scheme'];
+  const dark = hint !== 'light';
 
   if (isImg) {
-    const { svg, W, H } = buildSVG(grid, dark);
-    return new ImageResponse(
-      <div style={{ display:'flex', background: dark ? '#0a0a0a' : '#f4f1ec', padding:'24px', borderRadius:'8px' }}>
-        <img src={`data:image/svg+xml,${encodeURIComponent(svg)}`} width={W} height={H}/>
-      </div>,
-      { width: W + 48, height: H + 48 }
-    );
+    const svg = buildSVG(grid, dark);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    return res.send(svg);
   }
 
+  const appHref = `${APP_URL}#${code}`;
+  const imgHref = `${SITE_URL}/b/${code}/image`;
   const ascii   = buildASCII(grid);
-  const { x, o } = { x: [...grid.cells.values()].filter(v => v === 1).length,
-                      o: [...grid.cells.values()].filter(v => v === 2).length };
+  const { x, o } = countStones(grid);
 
   const html = `<!DOCTYPE html><html><head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0;url=${appHref}">
-  <meta property="og:site_name"   content="HEX STRATEGY">
-  <meta property="og:title"       content="Hex position — X:${x} O:${o} s${grid.s}">
-  <meta property="og:description" content="${ascii}">
-  <meta property="og:image"       content="${imgHref}">
-  <meta property="og:image:width" content="800">
-  <meta property="og:image:height" content="600">
-  <meta property="og:url"         content="${appHref}">
-  <meta name="twitter:card"       content="summary_large_image">
-  <meta name="twitter:image"      content="${imgHref}">
-  </head><body><script>location.replace(${JSON.stringify(appHref)})</script></body></html>`;
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0;url=${appHref}">
+<meta property="og:site_name"    content="HEX STRATEGY">
+<meta property="og:title"        content="Hex position — X:${x} O:${o} s${grid.s}">
+<meta property="og:description"  content="${ascii.replace(/&/g,'&amp;').replace(/</g,'&lt;')}">
+<meta property="og:image"        content="${imgHref}">
+<meta property="og:url"          content="${appHref}">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:image"       content="${imgHref}">
+</head><body><script>location.replace(${JSON.stringify(appHref)})</script></body></html>`;
 
-  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8',
-    'cache-control': 'public, max-age=3600' } });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(html);
 }
