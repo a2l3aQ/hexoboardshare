@@ -1,3 +1,5 @@
+import { Resvg } from '@resvg/resvg-js';
+
 const APP_URL  = 'https://hex-tic-tac-toe.github.io/strategies/';
 const SITE_URL = 'https://hexoboardshare.vercel.app';
 
@@ -124,10 +126,12 @@ export default function handler(req, res) {
   const dark = hint !== 'light';
 
   if (isImg) {
-    const svg = buildSVG(grid, dark);
-    res.setHeader('Content-Type', 'image/svg+xml');
+    const svg  = buildSVG(grid, dark);
+    const resvg = new Resvg(svg, { fitTo: { mode: 'zoom', value: 2 } });
+    const png  = resvg.render().asPng();
+    res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-    return res.send(svg);
+    return res.send(Buffer.from(png));
   }
 
   const appHref = `${APP_URL}#${code}`;
