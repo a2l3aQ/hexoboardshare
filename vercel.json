@@ -1,11 +1,5 @@
 {
   "rewrites": [
     { "source": "/b/:path*", "destination": "/api/b/:path*" }
-  ],
-  "headers": [
-    {
-      "source": "/b/:path*/image",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, immutable" }]
-    }
   ]
 }
