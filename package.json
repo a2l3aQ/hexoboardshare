@@ -1,4 +1,8 @@
 {
   "name": "hexoboardshare",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
 }
