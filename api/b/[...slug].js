@@ -100,7 +100,7 @@ function buildASCII(grid) {
     for (let q = -max; q <= max; q++) {
       if (Math.abs(q + r) > max) continue;
       const st = cells.get(`${q},${r}`) || 0;
-      row.push(st === 1 ? 'X' : st === 2 ? 'O' : '·');
+      row.push(st === 1 ? 'X' : st === 2 ? 'O' : '.');
     }
     return indent + row.join(' ');
   }).join('\n');
@@ -134,8 +134,8 @@ export default function handler(req, res) {
     return res.send(Buffer.from(png));
   }
 
-  const appHref = `${APP_URL}#${code}`;
-  const imgHref = `${SITE_URL}/b/${code}/image`;
+  const appHref = `${APP_URL}?b=${code}`;
+  const imgHref = `${SITE_URL}/b/${code}/image?v=2`;
   const ascii   = buildASCII(grid);
   const { x, o } = countStones(grid);
 
